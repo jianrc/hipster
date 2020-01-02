@@ -16,15 +16,15 @@
 
 package es.usc.citius.hipster.algorithm;
 
-import es.usc.citius.hipster.model.CostNode;
-import es.usc.citius.hipster.model.function.NodeExpander;
-import es.usc.citius.hipster.util.Predicate;
-import es.usc.citius.lab.hipster.collections.HashQueue;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
+
+import es.usc.citius.hipster.model.CostNode;
+import es.usc.citius.hipster.model.function.NodeExpander;
+import es.usc.citius.hipster.util.Predicate;
+import es.usc.citius.lab.hipster.collections.HashQueue;
 
 /**
  * <p>
@@ -106,8 +106,9 @@ public class BellmanFord<A,S,C extends Comparable<C>,N extends CostNode<A,S,C,N>
             // Take the next node
             N currentNode = dequeue();
             if (checkNegativeCycles && currentNode.pathSize() > explored.size()){
-                throw new NegativeCycleException();
+                throw new NegativeCycleException("currentNode : " + currentNode);
             }
+
             for (N successor : nodeExpander.expand(currentNode)) {
                 // Check if there is any improvement in the old cost
                 N previousNode = this.explored.get(successor.state());
@@ -155,6 +156,52 @@ public class BellmanFord<A,S,C extends Comparable<C>,N extends CostNode<A,S,C,N>
         return new SearchResult(Collections.<N>emptyList(), iteration, end - begin);
     }
 
+    public SearchResult searchVisistedOnce(final S goalState){
+        return searchVisistedOnce(new Predicate<N>() {
+            @Override
+            public boolean apply(N n) {
+                if (goalState != null) {
+                    return n.state().equals(goalState);
+                }
+                return false;
+            }
+        });
+    }
+    
+    public SearchResult searchVisistedOnce(Predicate<N> condition){
+    	
+    	Map<S, Integer> visisted = new HashMap<>();
+    	
+        int iteration = 0;
+        Iterator it = iterator();
+        long begin = System.currentTimeMillis();
+        N currentNode = null;
+        N goalNode = null;
+        while(it.hasNext()){
+            iteration++;
+            
+            currentNode = it.next();
+            if (goalNode == null && condition.apply(currentNode)) {
+                goalNode = currentNode;
+            }
+            
+            int visist = visisted.getOrDefault(currentNode.state(), 0);
+            if(visist > 0) {
+            	break;
+            }
+            
+            visisted.put(currentNode.state(), ++ visist);
+        }
+        
+        long end = System.currentTimeMillis();
+        if (goalNode != null) {
+            N goal = it.explored.get(goalNode.state());
+            return new SearchResult(goal, iteration, end - begin);
+        }
+
+        return new SearchResult(Collections.<N>emptyList(), iteration, end - begin);
+    }
+    
     @Override
     public Iterator iterator() {
         return new Iterator();
